@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek 2048 Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #faf8ef;
+            color: #776e65;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 80px;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #776e65;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            width: 450px;
+            margin-bottom: 20px;
+        }
+
+        .scores {
+            display: flex;
+            gap: 10px;
+        }
+
+        .score-box {
+            background-color: #bbada0;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .score-title {
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .score-value {
+            font-size: 20px;
+        }
+
+        .game-container {
+            background-color: #bbada0;
+            border-radius: 6px;
+            padding: 15px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-template-rows: repeat(4, 100px);
+            gap: 15px;
+            position: relative;
+        }
+
+        .cell {
+            background-color: rgba(238, 228, 218, 0.35);
+            border-radius: 3px;
+        }
+
+        .tile {
+            width: 100px;
+            height: 100px;
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 55px;
+            font-weight: bold;
+            position: absolute;
+            transition: all 0.1s ease-in-out;
+            z-index: 1;
+        }
+
+        .game-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(238, 228, 218, 0.73);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            z-index: 10;
+            display: none;
+        }
+
+        .game-message p {
+            font-size: 60px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: #8f7a66;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #9f8b77;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>2048</h1>
+    
+    <div class="game-header">
+        <div class="scores">
+            <div class="score-box">
+                <div class="score-title">Score</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-title">Best</div>
+                <div class="score-value" id="best-score">0</div>
+            </div>
+        </div>
+        <button id="new-game-btn">New Game</button>
+    </div>
+    
+    <div class="game-container">
+        <div class="grid" id="grid">
+            <!-- 16 empty cells -->
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+        </div>
+        
+        <div class="game-message" id="game-message">
+            <p>Game Over!</p>
+            <button id="try-again-btn">Try Again</button>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <p>Use arrow keys to move the tiles. When two tiles with the same number touch, they merge into one!</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const grid = document.getElementById('grid');
+            const scoreDisplay = document.getElementById('score');
+            const bestScoreDisplay = document.getElementById('best-score');
+            const gameMessage = document.getElementById('game-message');
+            const newGameBtn = document.getElementById('new-game-btn');
+            const tryAgainBtn = document.getElementById('try-again-btn');
+            
+            // Game state
+            let board = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+            let score = 0;
+            let bestScore = localStorage.getItem('2048-best-score') || 0;
+            bestScoreDisplay.textContent = bestScore;
+            let isGameOver = false;
+
+            // Initialize the game
+            function initGame() {
+                // Reset board
+                board = [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0]
+                ];
+                
+                // Reset score
+                score = 0;
+                scoreDisplay.textContent = score;
+                
+                // Hide game over message
+                gameMessage.style.display = 'none';
+                isGameOver = false;
+                
+                // Clear all tiles
+                document.querySelectorAll('.tile').forEach(tile => tile.remove());
+                
+                // Add initial tiles
+                addRandomTile();
+                addRandomTile();
+                updateView();
+            }
+            
+            // Add a random tile (90% chance 2, 10% chance 4)
+            function addRandomTile() {
+                const emptyCells = [];
+                
+                for (let row = 0; row < 4; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        if (board[row][col] === 0) {
+                            emptyCells.push({ row, col });
+                        }
+                    }
+                }
+                
+                if (emptyCells.length > 0) {
+                    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                    board[randomCell.row][randomCell.col] = Math.random() < 0.9 ? 2 : 4;
+                    return true;
+                }
+                return false;
+            }
+            
+            // Update the visual representation of the board
+            function updateView() {
+                // Clear all existing tiles
+                document.querySelectorAll('.tile').forEach(tile => tile.remove());
+                
+                // Create new tiles for each non-zero cell
+                for (let row = 0; row < 4; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        const value = board[row][col];
+                        if (value !== 0) {
+                            // Create tile element
+                            const tile = document.createElement('div');
+                            tile.className = 'tile';
+                            tile.textContent = value;
+                            
+                            // Position the tile
+                            tile.style.left = `${col * 115}px`;
+                            tile.style.top = `${row * 115}px`;
+                            
+                            // Style the tile based on its value
+                            tile.style.backgroundColor = getTileColor(value);
+                            tile.style.color = value > 4 ? 'white' : '#776e65';
+                            
+                            // Adjust font size for large numbers
+                            if (value > 1000) tile.style.fontSize = '45px';
+                            else if (value > 100) tile.style.fontSize = '50px';
+                            
+                            grid.appendChild(tile);
+                        }
+                    }
+                }
+                
+                // Update score display
+                scoreDisplay.textContent = score;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestScoreDisplay.textContent = bestScore;
+                    localStorage.setItem('2048-best-score', bestScore);
+                }
+            }
+            
+            // Get tile color based on its value
+            function getTileColor(value) {
+                const colors = {
+                    2: '#eee4da',
+                    4: '#ede0c8',
+                    8: '#f2b179',
+                    16: '#f59563',
+                    32: '#f67c5f',
+                    64: '#f65e3b',
+                    128: '#edcf72',
+                    256: '#edcc61',
+                    512: '#edc850',
+                    1024: '#edc53f',
+                    2048: '#edc22e',
+                    4096: '#3c3a32',
+                    8192: '#3c3a32'
+                };
+                return colors[value] || '#3c3a32';
+            }
+            
+            // Check if game is over (no moves left)
+            function checkGameOver() {
+                // Check if any empty cells
+                for (let row = 0; row < 4; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        if (board[row][col] === 0) return false;
+                    }
+                }
+                
+                // Check for possible merges
+                for (let row = 0; row < 4; row++) {
+                    for (let col = 0; col < 4; col++) {
+                        // Check right neighbor
+                        if (col < 3 && board[row][col] === board[row][col + 1]) {
+                            return false;
+                        }
+                        // Check bottom neighbor
+                        if (row < 3 && board[row][col] === board[row + 1][col]) {
+                            return false;
+                        }
+                    }
+                }
+                
+                return true;
+            }
+            
+            // Move tiles in a direction
+            function move(direction) {
+                if (isGameOver) return false;
+                
+                // Save current board state for comparison
+                const oldBoard = JSON.stringify(board);
+                let moved = false;
+                
+                // Process movement based on direction
+                switch (direction) {
+                    case 'up':
+                        for (let col = 0; col < 4; col++) {
+                            // Combine similar tiles
+                            for (let row = 1; row < 4; row++) {
+                                if (board[row][col] !== 0) {
+                                    let currentRow = row;
+                                    
+                                    // Move tile up as far as possible
+                                    while (currentRow > 0 && board[currentRow - 1][col] === 0) {
+                                        board[currentRow - 1][col] = board[currentRow][col];
+                                        board[currentRow][col] = 0;
+                                        currentRow--;
+                                        moved = true;
+                                    }
+                                    
+                                    // Merge if it hits a tile with the same value
+                                    if (currentRow > 0 && board[currentRow - 1][col] === board[currentRow][col]) {
+                                        board[currentRow - 1][col] *= 2;
+                                        score += board[currentRow - 1][col];
+                                        board[currentRow][col] = 0;
+                                        moved = true;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'down':
+                        for (let col = 0; col < 4; col++) {
+                            for (let row = 2; row >= 0; row--) {
+                                if (board[row][col] !== 0) {
+                                    let currentRow = row;
+                                    
+                                    while (currentRow < 3 && board[currentRow + 1][col] === 0) {
+                                        board[currentRow + 1][col] = board[currentRow][col];
+                                        board[currentRow][col] = 0;
+                                        currentRow++;
+                                        moved = true;
+                                    }
+                                    
+                                    if (currentRow < 3 && board[currentRow + 1][col] === board[currentRow][col]) {
+                                        board[currentRow + 1][col] *= 2;
+                                        score += board[currentRow + 1][col];
+                                        board[currentRow][col] = 0;
+                                        moved = true;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'left':
+                        for (let row = 0; row < 4; row++) {
+                            for (let col = 1; col < 4; col++) {
+                                if (board[row][col] !== 0) {
+                                    let currentCol = col;
+                                    
+                                    while (currentCol > 0 && board[row][currentCol - 1] === 0) {
+                                        board[row][currentCol - 1] = board[row][currentCol];
+                                        board[row][currentCol] = 0;
+                                        currentCol--;
+                                        moved = true;
+                                    }
+                                    
+                                    if (currentCol > 0 && board[row][currentCol - 1] === board[row][currentCol]) {
+                                        board[row][currentCol - 1] *= 2;
+                                        score += board[row][currentCol - 1];
+                                        board[row][currentCol] = 0;
+                                        moved = true;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'right':
+                        for (let row = 0; row < 4; row++) {
+                            for (let col = 2; col >= 0; col--) {
+                                if (board[row][col] !== 0) {
+                                    let currentCol = col;
+                                    
+                                    while (currentCol < 3 && board[row][currentCol + 1] === 0) {
+                                        board[row][currentCol + 1] = board[row][currentCol];
+                                        board[row][currentCol] = 0;
+                                        currentCol++;
+                                        moved = true;
+                                    }
+                                    
+                                    if (currentCol < 3 && board[row][currentCol + 1] === board[row][currentCol]) {
+                                        board[row][currentCol + 1] *= 2;
+                                        score += board[row][currentCol + 1];
+                                        board[row][currentCol] = 0;
+                                        moved = true;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                }
+                
+                // If the board changed, add new tile and check game over
+                if (moved) {
+                    addRandomTile();
+                    updateView();
+                    
+                    if (checkGameOver()) {
+                        gameOver();
+                    }
+                }
+                
+                return moved;
+            }
+            
+            // Handle game over
+            function gameOver() {
+                gameMessage.style.display = 'flex';
+                isGameOver = true;
+            }
+            
+            // Event listeners
+            document.addEventListener('keydown', (e) => {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    switch (e.key) {
+                        case 'ArrowUp': move('up'); break;
+                        case 'ArrowDown': move('down'); break;
+                        case 'ArrowLeft': move('left'); break;
+                        case 'ArrowRight': move('right'); break;
+                    }
+                }
+            });
+            
+            // Touch controls for mobile
+            let touchStartX, touchStartY;
+            
+            grid.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: false });
+            
+            grid.addEventListener('touchend', (e) => {
+                if (!touchStartX || !touchStartY) return;
+                
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                
+                const diffX = touchEndX - touchStartX;
+                const diffY = touchEndY - touchStartY;
+                
+                // Determine swipe direction
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // Horizontal swipe
+                    if (diffX > 0) move('right');
+                    else move('left');
+                } else {
+                    // Vertical swipe
+                    if (diffY > 0) move('down');
+                    else move('up');
+                }
+                
+                // Reset touch coordinates
+                touchStartX = null;
+                touchStartY = null;
+            }, { passive: false });
+            
+            // Button event listeners
+            newGameBtn.addEventListener('click', initGame);
+            tryAgainBtn.addEventListener('click', initGame);
+            
+            // Start the game
+            initGame();
+        });
+    </script>
+</body>
+</html>
